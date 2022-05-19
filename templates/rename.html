@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class="content">
+    <h1>Rename {{house.name}}</h1>
+
+    <form action="/manageWare/rename/{{house.id}}" method="POST">
+        <label for="Warehouse Name">
+            <input type="text" name="Warehouse Name" id="Warehouse Name">
+        </label>
+        <input type="submit" value="Rename">
+    </form>
+</div>
+{% endblock %}

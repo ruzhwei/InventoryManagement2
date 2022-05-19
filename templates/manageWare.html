@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class="content">
+    <h1>Warehouses Management</h1>
+
+    {% if warehouse|length < 1 %}
+    <h4>There are no warehouses. Create one below!</h4>
+
+    {% else %}
+        <table>
+            {% for house in warehouse %}
+                <tr>
+                    <td>{{ house }}</td>
+                    <td>
+                        <a href="/manageWare/delete/{{ house.id }}">Delete</a>
+                        <br>
+                        <a href="/manageWare/rename/{{ house.id }}">Rename</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+
+    <form action="/manageWare" method="POST">
+
+            <label for="Warehouse Name">
+                <input type="text" name="Warehouse Name" id="Warehouse Name">
+            </label>
+
+        <input type="submit" value="Create Warehouse">
+    </form>
+
+    <a href="/">Back to Main Page</a>
+
+
+</div>
+{% endblock %}

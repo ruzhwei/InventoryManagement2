@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class="content">
+    <h1>Inventory Management</h1>
+
+    {% if products|length < 1 %}
+    <h4>There are no products. Create one below!</h4>
+
+    {% else %}
+        <table>
+            <tr>
+                {% for column in columns %}
+                    <th>{{ column.upper().replace("_", " ") }}</th>
+                {% endfor %}
+                <th>Actions</th>
+            </tr>
+            {% for product in products %}
+                <tr>
+                    {% for column in columns %}
+                        <td>{{ product[column] }}</td>
+                    {% endfor %}
+                    <td>
+                        <a href="/delete/{{ product.id }}">Delete</a>
+                        <br>
+                        <a href="/update/{{ product.id }}">Update</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+
+    <form action="/" method="POST">
+        {% for column in columns %}
+            <label for="{{ column }}">{{ column.upper().replace("_", " ") }}
+                <input type="text" name="{{ column }}" id="{{ column }}">
+            </label>
+        {% endfor %}
+        <input type="submit" value="Create Product">
+    </form>
+
+    <table>
+        <h4>Available Warehouses</h4>
+        <a href="/manageWare">Manage Warehouses</a>
+        {% for house in warehouse %}
+            <p>{{ house }}</p>
+        {% endfor %}
+    </table>
+
+</div>
+{% endblock %}

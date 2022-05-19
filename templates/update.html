@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class="content">
+    <h1>Update Product</h1>
+
+    <form action="/update/{{ product.id }}" method="POST">
+        {% for column in columns %}
+            <input type="text" name="{{ column }}" id="{{ column }}" value="{{ product[column] }}">
+        {% endfor %}
+        <input type="submit" value="Update Product">
+    </form>
+</div>
+{% endblock %}
