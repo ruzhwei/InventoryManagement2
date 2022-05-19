@@ -1,33 +1,26 @@
-from os import name
-from flask import Flask, render_template, request, redirect
+
+from flask import Flask, render_template, request, redirect, send_file
 from flask_sqlalchemy import SQLAlchemy
+from io import StringIO, BytesIO
+from datetime import datetime
+import csv
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data.db"  # relative path
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
-# Create model for Products and Warehouses with the following attributes.
-# Warehouse and Product are in one-to-many relationship
-class Warehouse(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), nullable=False)
-    def __repr__(self):
-        return self.name
-    
+# Create model for Products with the following attributes.
 class Products(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     product = db.Column(db.String(100), nullable=False)  # must have a name
     quantity = db.Column(db.Integer, default=1)
     comments = db.Column(db.String(200))
-    ware_id = db.Column(db.Integer, db.ForeignKey("warehouse.id"))
-    warehouse = db.relationship('Warehouse', backref=db.backref('products', lazy = 'dynamic'))
+    city = db.Column(db.String(20), nullable=False)
 
-    def __init__(self, product, warehouse ):
+    def __init__(self, product, city ):
         self.product = product
-        self.warehouse = warehouse
-    def __repr__(self):
-        return '<Products %r>' % self.product
+        self.city = city
 # Creates the SQLite database (db).
 @app.before_first_request
 def create_table():
@@ -36,16 +29,12 @@ def create_table():
 
 @app.route("/", methods=["POST", "GET"])
 def index():
-    columns = [column.name for column in Products.__mapper__.columns if column.name != "id" and column.name != "ware_id"]
-    columns.append('warehouse')
+    columns = [column.name for column in Products.__mapper__.columns if column.name != "id" and column.name != "city"]
     # Add new product to the db
     if request.method == "POST":
-        new_warehouse_name = request.form['warehouse']
-        new_warehouse = Warehouse.query.filter_by(name = str(new_warehouse_name)).first()
-        # if not specified or the warehouse user input does not exist, warehouse will be "None", we can update this attr later   
-        new_task = Products(product = request.form['product'], warehouse= new_warehouse)
+        new_task = Products(product = request.form['product'], city = request.form['city'])
         for column in columns:
-            if column == 'warehouse' or column == 'product':
+            if column == 'city' or column == 'product':
                 continue
             else:
                 setattr(new_task, column, request.form[column])
@@ -60,8 +49,7 @@ def index():
     else:
         
         products = Products.query.all()
-        warehouse = Warehouse.query.all()
-        return render_template("index.html", products=products, columns=columns, warehouse = warehouse)
+        return render_template("index.html", products=products, columns=columns)
 
 
 @app.route("/manageWare", methods=["POST", "GET"])
@@ -125,20 +113,13 @@ def delete(id):
 
 @app.route("/update/<int:id>", methods=["POST", "GET"])
 def update(id):
-    columns = [column.name for column in Products.__mapper__.columns if column.name != "id" and column.name != "ware_id"]
-    columns.append('warehouse')
+    columns = [column.name for column in Products.__mapper__.columns if column.name != "id" and column.name != "city"]
     product_to_update = Products.query.get_or_404(id)
 
     # Update the info of a product.
     if request.method == "POST":
         for column in columns:
-            if column == 'warehouse':
-                new_warehouse_name = request.form[column]
-                new_warehouse = Warehouse.query.filter_by(name = str(new_warehouse_name)).first()
-                # if not specified or the warehouse user input does not exist, warehouse will be "None", we can update this attr later   
-                product_to_update.warehouse = new_warehouse
-            else:
-                setattr(product_to_update, column, request.form[column])
+            setattr(product_to_update, column, request.form[column])
         try:
             db.session.commit()
             return redirect("/")
@@ -147,3 +128,29 @@ def update(id):
 
     else:
         return render_template("update.html", product=product_to_update, columns=columns)
+
+@app.route("/export")
+def export():
+    # Exports product data to a CSV.
+    # Creates CSV in memory via StringIO and converts buffer into a file-like object via BytesIO.
+    csv_buffer = StringIO()
+    writer = csv.writer(csv_buffer)
+
+    first_row = [column.name for column in Products.__mapper__.columns]
+    writer.writerow(first_row)
+
+    for record in Products.query.all():
+        row = []
+        for column in Products.__mapper__.columns:
+            row.append(getattr(record, column.name))
+        writer.writerow(row)
+
+    csv_obj = BytesIO()
+    csv_obj.write(csv_buffer.getvalue().encode())
+    csv_obj.seek(0)
+
+    return send_file(
+        path_or_file=csv_obj,
+        as_attachment=True,
+        download_name=f"Inventory_data_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
+    )

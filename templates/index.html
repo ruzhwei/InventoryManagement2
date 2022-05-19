@@ -13,6 +13,7 @@
                 {% for column in columns %}
                     <th>{{ column.upper().replace("_", " ") }}</th>
                 {% endfor %}
+                <th>CITY</th>
                 <th>Actions</th>
             </tr>
             {% for product in products %}
@@ -20,6 +21,8 @@
                     {% for column in columns %}
                         <td>{{ product[column] }}</td>
                     {% endfor %}
+                    <td>{{ product[city] }}</td>
+                    
                     <td>
                         <a href="/delete/{{ product.id }}">Delete</a>
                         <br>
@@ -36,16 +39,20 @@
                 <input type="text" name="{{ column }}" id="{{ column }}">
             </label>
         {% endfor %}
+        <label for="city">{{ "CITY" }}
+        <select name="city">
+            <option value="Toronto">Toronto</option>
+            <option value="Austin">Austin</option>
+            <option value="Las Vegas">Las Vegas</option>
+            <option value="New York">New York</option>
+            <option value="San Diego">San Diego</option>
+        </select>
         <input type="submit" value="Create Product">
     </form>
 
-    <table>
-        <h4>Available Warehouses</h4>
-        <a href="/manageWare">Manage Warehouses</a>
-        {% for house in warehouse %}
-            <p>{{ house }}</p>
-        {% endfor %}
-    </table>
-
 </div>
+
+<a href="/export">Export Inventory Details to CSV</a>
+</div>
+
 {% endblock %}
