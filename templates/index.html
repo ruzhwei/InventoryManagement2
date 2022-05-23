@@ -14,15 +14,18 @@
                     <th>{{ column.upper().replace("_", " ") }}</th>
                 {% endfor %}
                 <th>CITY</th>
+                <th>WEATHER</th>
                 <th>Actions</th>
+
             </tr>
             {% for product in products %}
                 <tr>
                     {% for column in columns %}
                         <td>{{ product[column] }}</td>
                     {% endfor %}
-                    <td>{{ product[city] }}</td>
                     
+                    <td>{{ product[city] }}</td>
+                    <td>{{ weather[product[city]] }}</td>
                     <td>
                         <a href="/delete/{{ product.id }}">Delete</a>
                         <br>

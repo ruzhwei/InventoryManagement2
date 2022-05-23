@@ -3,11 +3,22 @@
 {% block body %}
 <div class="content">
     <h1>Update Product</h1>
-
     <form action="/update/{{ product.id }}" method="POST">
         {% for column in columns %}
+        <label for="{{ column }}">{{ column.upper().replace("_", " ") }}
             <input type="text" name="{{ column }}" id="{{ column }}" value="{{ product[column] }}">
+        </label>
         {% endfor %}
+        <label for="city">{{ "CITY:" }}
+            <td> change from {{product[city]}} to </td>
+        <select name="city" selected = "{{ product[city]}}">
+            <option value="Toronto">Toronto</option>
+            <option value="Austin">Austin</option>
+            <option value="Las Vegas">Las Vegas</option>
+            <option value="New York">New York</option>
+            <option value="San Diego">San Diego</option>
+            </select>
+        </label>
         <input type="submit" value="Update Product">
     </form>
 </div>

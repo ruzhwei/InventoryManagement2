@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from io import StringIO, BytesIO
 from datetime import datetime
 import csv
+import urllib.request, json
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data.db"  # relative path
@@ -14,7 +15,7 @@ db = SQLAlchemy(app)
 class Products(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     product = db.Column(db.String(100), nullable=False)  # must have a name
-    quantity = db.Column(db.Integer, default=1)
+    quantity = db.Column(db.Integer, default=1) # must be an integer
     comments = db.Column(db.String(200))
     city = db.Column(db.String(20), nullable=False)
 
@@ -26,12 +27,27 @@ class Products(db.Model):
 def create_table():
     db.create_all()
 
+latAndLong = {
+    'Austin' : [30.26, -97.73],
+    'Toronto' : [43.65, -79.34],
+    'San Diego': [32.71, -117.16],
+    'New York': [40.73, -73.93],
+    'Las Vegas': [36.11, -115.17]
+}
+
+weatherAPI = "https://api.openweathermap.org/data/3.0/onecall?lat=%f&lon=%f&exclude=hourly,daily,minutely,alerts&appid=%s&units=metric"
 
 @app.route("/", methods=["POST", "GET"])
 def index():
     columns = [column.name for column in Products.__mapper__.columns if column.name != "id" and column.name != "city"]
     # Add new product to the db
     if request.method == "POST":
+        # Check if it has a name and city
+        if not request.form['product'] or not request.form['city']:
+             return redirect("/noNameOrCity")
+        # Check if quantity is valid
+        if not request.form['quantity'].isdigit():
+             return redirect("/notInt")
         new_task = Products(product = request.form['product'], city = request.form['city'])
         for column in columns:
             if column == 'city' or column == 'product':
@@ -45,59 +61,30 @@ def index():
         except:
             return "There was an issue creating this product"
 
-    # List all.
+    # List all products.
     else:
         
         products = Products.query.all()
-        return render_template("index.html", products=products, columns=columns)
-
-
-@app.route("/manageWare", methods=["POST", "GET"])
-def manageWare():
-    
-    if request.method == "POST":
-        # This is to add new warehouses
-        new_task = Warehouse(name = request.form['Warehouse Name'])
-
-        try:
-            db.session.add(new_task)
-            db.session.commit()
-            return redirect("/manageWare")
-        except:
-            return "There was an issue creating this warehouse"
-
-    # List all.
-    else:
-        warehouse = Warehouse.query.all()
-        return render_template("manageWare.html", warehouse = warehouse)
-
-@app.route("/manageWare/delete/<int:id>")
-def deleteWare(id):
-    # Delete warehouse with given id value from the db.
-    warehouse_to_delete = Warehouse.query.get_or_404(id)
-    try:
-        db.session.delete(warehouse_to_delete)
-        db.session.commit()
-        return redirect("/manageWare")
-    except:
-        return "There was an issue deleting this warehouse"
-
-@app.route("/manageWare/rename/<int:id>", methods=["POST", "GET"])
-def rename(id):
-    warehouse_to_rename = Warehouse.query.get_or_404(id)
-
-    # Rename this warehouse with given id
-    if request.method == "POST":
-        setattr(warehouse_to_rename, "name", request.form['Warehouse Name'])
-        print(warehouse_to_rename, warehouse_to_rename.name)
-        try:
-            db.session.commit()
-            return redirect("/manageWare")
-        except:
-            return "There was an issue rename this warehouse"
-
-    else:
-        return render_template("rename.html", house=warehouse_to_rename)
+        # Stores weather conditions from the API, then sent to the frontend
+        weather = {}
+        # Fetch the API key, here it's just stored in a text file, but in real applications, it should be stored securely
+        f = open("./templates/APIkey.txt")
+        API_key = f.readline()
+        for product in products:
+            location = getattr(product, 'city')
+            if location in weather:
+                continue
+            else:
+                try:
+                    city_coords = latAndLong[location]
+                    api_response = urllib.request.urlopen(weatherAPI%(city_coords[0], city_coords[1], API_key))
+                    api_data = api_response.read()
+                    api_dict = json.loads(api_data)
+                    weather_description = '%d Celsius Degree'%api_dict.get('current').get('temp') + ', ' + api_dict.get('current').get('weather')[0].get('main') + ': ' + api_dict.get('current').get('weather')[0].get('description')
+                    weather[location] = weather_description
+                except:
+                    weather[location] = "There is some errot fetching the weather data"
+        return render_template("index.html", products=products, columns=columns, city = 'city', weather = weather)
 
 @app.route("/delete/<int:id>")
 def delete(id):
@@ -118,8 +105,15 @@ def update(id):
 
     # Update the info of a product.
     if request.method == "POST":
+        # Check if it has a name and city
+        if not request.form['product'] or not request.form['city']:
+             return redirect("/noNameOrCity")
+        # Check if quantity is valid
+        if not request.form['quantity'].isdigit():
+             return redirect("/notInt")
         for column in columns:
             setattr(product_to_update, column, request.form[column])
+        setattr(product_to_update, 'city', request.form['city'])
         try:
             db.session.commit()
             return redirect("/")
@@ -127,11 +121,11 @@ def update(id):
             return "There was an issue updating that product"
 
     else:
-        return render_template("update.html", product=product_to_update, columns=columns)
+        return render_template("update.html", product=product_to_update, columns=columns, city = 'city')
 
 @app.route("/export")
 def export():
-    # Exports product data to a CSV.
+    # Exports inventory data to a CSV.
     # Creates CSV in memory via StringIO and converts buffer into a file-like object via BytesIO.
     csv_buffer = StringIO()
     writer = csv.writer(csv_buffer)
@@ -154,3 +148,19 @@ def export():
         as_attachment=True,
         download_name=f"Inventory_data_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
     )
+
+@app.route("/noNameOrCity")
+def warning():
+
+    if request.method == "POST":
+        return redirect("/")
+    else:
+        return render_template("noNameOrCity.html")
+
+@app.route("/notInt")
+def notInt():
+
+    if request.method == "POST":
+        return redirect("/")
+    else:
+        return render_template("notInt.html")
