@@ -2,7 +2,7 @@
 
 This is for shopify technical challenge.
 
-CRUD and warehouses are implemented.
+CRUD, weather and export are implemented.
 
 It can be run direcltly on Replit, just hit run button.
 
